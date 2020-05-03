@@ -1,6 +1,7 @@
 package org.example.flowkit.service;
 
 import org.example.flowkit.entity.*;
+import org.example.flowkit.jsonobject.ActivityInstanceRequest;
 import org.example.flowkit.repository.ActivityAssociateRepository;
 import org.example.flowkit.service.implementation.ActivityAssociateServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import java.util.List;
 public class ActivityAssociateService implements ActivityAssociateServiceImpl {
 
     private ActivityAssociateRepository activityAssociateRepository;
+    private AssociateService associateService;
 
     public ActivityAssociateService() {
     }
@@ -23,6 +25,10 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
         this.activityAssociateRepository = activityAssociateRepository;
     }
 
+    @Autowired
+    public void setAssociateService(AssociateService associateService) {
+        this.associateService = associateService;
+    }
 
     public ActivityAssociates saveActivityInstanceAssociateStatus(ActivityAssociates activityAssociates,
                                                                   String status) {
@@ -109,13 +115,17 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
 
     public List<ActivityAssociates> addActivityInstanceAssociatesBasedRole(ActivityInstance activityInstance,
                                                                            Roles role) {
-        List<Associates> associates = role.getAssociates();
+        List<Associates> associates = associateService.findAssociateBasedRole(role);
+        if (associates == null) {
+            return null;
+        }
         List<ActivityAssociates> activityAssociates = new ArrayList<>();
         for (Associates associate : associates) {
             ActivityAssociates activityAssociate = new ActivityAssociates();
             activityAssociate.setActivity_instance_associate(activityInstance);
             activityAssociate.setAssociates(associate);
             activityAssociate.setStatus("PENDING");
+            activityAssociate.setAlert(false);
             try {
                 activityAssociateRepository.save(activityAssociate);
                 activityAssociates.add(activityAssociate);
@@ -129,18 +139,34 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
     }
 
     public ActivityAssociates addActivityInstanceAssociatesBasedIndividual(ActivityInstance activityInstance,
-                                                                           Individual individual) {
-        Activity activity;
-        Associates associate;
-        if (individual.getAssociates() == null) {
-            activity = activityInstance.getActivity();
-            associate = activity.getOther_associate();
-        } else {
-            associate = individual.getAssociates();
+                                                                           Individual individual, Associates creator,
+                                                                           ActivityInstanceRequest activity) {
+        Associates individualAssociate = associateService.findAssociateBasedIndividual(individual);
+        Associates manager = null;
+        if (individualAssociate == null) {
+            manager = associateService.findAssociateBasedIndividualVertical(creator, individual.getVertical());
+            if (manager == null) {
+                String other = activity.getAssociate();
+                System.out.println(other);
+                if (other == null) {
+                    System.out.println("Error: [addActivityInstanceAssociatesBasedIndividual] [ActivityAssociateService] couldn't find an associate to it");
+                    return null;
+                } else {
+                    manager = associateService.getAssociateByEmailID(other);
+
+                    if(manager == null){
+                        System.out.println("Error: [addActivityInstanceAssociatesBasedIndividual] [ActivityAssociateService] couldn't find manager to it");
+                    }
+                    individualAssociate = manager;
+                }
+            }else{
+                individualAssociate = manager;
+            }
         }
+
         ActivityAssociates activityAssociates = new ActivityAssociates();
         activityAssociates.setStatus("PENDING");
-        activityAssociates.setAssociates(associate);
+        activityAssociates.setAssociates(individualAssociate);
         activityAssociates.setActivity_instance_associate(activityInstance);
         try {
             activityAssociateRepository.save(activityAssociates);
@@ -167,4 +193,9 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
             return null;
         }
     }
+
+    public List<ActivityAssociates> getActivityAssociatesByActivityInstance(ActivityInstance activityInstance){
+        return activityAssociateRepository.getActivityAssociatesByActivityInstance(activityInstance);
+    }
+
 }

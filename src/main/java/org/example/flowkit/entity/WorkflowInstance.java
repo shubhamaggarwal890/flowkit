@@ -33,7 +33,6 @@ public class WorkflowInstance {
     @OneToMany(mappedBy = "workflowInstance", fetch = FetchType.LAZY)
     private List<ActivityInstance> activityInstances = new ArrayList<>();
 
-
     public Workflow getWorkflow() {
         return workflow;
     }

@@ -60,35 +60,6 @@ public class WorkflowService implements WorkflowServiceImpl {
         return workflow.orElse(null);
     }
 
-    public Workflow connectActivities(List<Activity> activities, Long workflow_id) {
-        Workflow workflow = getWorkflowById(workflow_id);
-        if(workflow==null){
-            System.out.println("Error: [connectActivities][WorkflowService]: No workflow found");
-            return null;
-        }
-        for (int i = 0; i < activities.size() - 1; i++) {
-            Activity current = activities.get(i);
-            Activity next = activities.get(i + 1);
-            current = activityService.updateActivitySuccessor(current, next);
-            activities.set(i, current);
-        }
-        for (int i = activities.size()-1; i > 0; i--) {
-            Activity current = activities.get(i);
-            Activity previous = activities.get(i - 1);
-            current = activityService.updateActivityPredecessor(current, previous);
-            activities.set(i, current);
-        }
-        try{
-            for (Activity activity : activities) {
-                activityRepository.save(activity);
-            }
-            return workflow;
-        }catch (DataAccessException error){
-            System.out.println("Error: [connectActivities][WorkflowService] " + error.getLocalizedMessage());
-        }
-        return null;
-    }
-
     public String deleteWorkflow(Workflow workflow){
         if(!workflow.getWorkflowInstances().isEmpty()){
             return "Warning:";

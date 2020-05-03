@@ -15,13 +15,19 @@ import java.util.Optional;
 public class ActivityInstanceService implements ActivityInstanceServiceImpl {
 
     private ActivityInstanceRepository activityInstanceRepository;
+    private ActivityService activityService;
 
     public ActivityInstanceService() {
     }
 
     @Autowired
-    public void SetActivityInstanceService(ActivityInstanceRepository activityInstanceRepository) {
+    public void setActivityInstanceRepository(ActivityInstanceRepository activityInstanceRepository) {
         this.activityInstanceRepository = activityInstanceRepository;
+    }
+
+    @Autowired
+    public void setActivityService(ActivityService activityService) {
+        this.activityService = activityService;
     }
 
     public ActivityInstance createActivityInstance(String title, String remark, String status, Activity activity,
@@ -70,44 +76,44 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
     }
 
     public List<ActivityInstance> getAllActivitiesInstanceForWorkflowInstance(WorkflowInstance workflowInstance) {
-        List<ActivityInstance> activityInstances = workflowInstance.getActivityInstances();
+        List<ActivityInstance> activityInstances = activityInstanceRepository.getActivityInstanceByWorkflowInstance(workflowInstance);
         if (activityInstances.isEmpty()) return null;
         return activityInstances;
     }
 
-    public ActivityInstance getActivityInstanceById(Long activity_instance_id) {
-        Optional<ActivityInstance> activityInstance = activityInstanceRepository.findById(activity_instance_id);
-        return activityInstance.orElse(null);
-    }
+//    public ActivityInstance getActivityInstanceById(Long activity_instance_id) {
+//        Optional<ActivityInstance> activityInstance = activityInstanceRepository.findById(activity_instance_id);
+//        return activityInstance.orElse(null);
+//    }
 
-    public List<ActivityInstance> getAllActivitiesInstancesForAssociateForWorkflowInstance(WorkflowInstance workflowInstance) {
-        List<ActivityInstance> activityInstancesForAssociate = new ArrayList<>();
-        List<ActivityInstance> activityInstances = workflowInstance.getActivityInstances();
-        if (activityInstances.isEmpty()) {
-            return null;
-        }
-        ActivityInstance activityInstanceStart = null;
-        for (ActivityInstance activityInstance : activityInstances) {
-            if (activityInstance.getPredecessor() == null) {
-                activityInstanceStart = activityInstance;
-                break;
-            }
-        }
-        if (activityInstanceStart == null) {
-            return null;
-        }
-
-        while (activityInstanceStart.getStatus().equals("ACCEPT")) {
-            activityInstancesForAssociate.add(activityInstanceStart);
-            activityInstanceStart = activityInstanceStart.getSuccessor();
-        }
-        activityInstancesForAssociate.add(activityInstanceStart);
-
-        if (activityInstancesForAssociate.isEmpty()) {
-            return null;
-        }
-        return activityInstancesForAssociate;
-    }
+//    public List<ActivityInstance> getAllActivitiesInstancesForAssociateForWorkflowInstance(WorkflowInstance workflowInstance) {
+//        List<ActivityInstance> activityInstancesForAssociate = new ArrayList<>();
+//        List<ActivityInstance> activityInstances = getAllActivitiesInstanceForWorkflowInstance(workflowInstance);
+//        if (activityInstances == null) {
+//            return null;
+//        }
+//        ActivityInstance activityInstanceStart = null;
+//        for (ActivityInstance activityInstance : activityInstances) {
+//            if (activityInstance.getPredecessor() == null) {
+//                activityInstanceStart = activityInstance;
+//                break;
+//            }
+//        }
+//        if (activityInstanceStart == null) {
+//            return null;
+//        }
+//
+//        while (activityInstanceStart.getStatus().equals("ACCEPT")) {
+//            activityInstancesForAssociate.add(activityInstanceStart);
+//            activityInstanceStart = activityInstanceStart.getSuccessor();
+//        }
+//        activityInstancesForAssociate.add(activityInstanceStart);
+//
+//        if (activityInstancesForAssociate.isEmpty()) {
+//            return null;
+//        }
+//        return activityInstancesForAssociate;
+//    }
 
     public ActivityInstance setActivityInstanceStatus(ActivityInstance activityInstance, String status) {
         activityInstance.setStatus(status);
@@ -167,4 +173,28 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
         return null;
     }
 
+    public ActivityInstance updateNextActivityInstance(List<ActivityInstance> activityInstances){
+
+        ActivityInstance start = null;
+        for (ActivityInstance activityInstance: activityInstances) {
+            ActivityInstance predecessor = activityInstance.getSource();
+            if (predecessor == null) {
+                start = activityInstance;
+            }
+        }
+
+        while(start!=null) {
+            Activity activity = activityService.getActivityByInstanceId(start);
+            if(activity.isAuto()) {
+                start = setActivityInstanceStatus(start, "ACCEPT");
+                if(start == null) {
+                    return null;
+                }
+                start = start.getDestination();
+            }else {
+                return start;
+            }
+        }
+        return null;
+    }
 }

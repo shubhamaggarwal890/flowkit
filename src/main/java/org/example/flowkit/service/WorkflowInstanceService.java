@@ -52,31 +52,6 @@ public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
         return null;
     }
 
-    public WorkflowInstance connectActivitiesInstances(List<ActivityInstance> activitiesInstance,
-                                                       WorkflowInstance workflowInstance) {
-        for (int i = 0; i < activitiesInstance.size() - 1; i++) {
-            ActivityInstance current = activitiesInstance.get(i);
-            ActivityInstance next = activitiesInstance.get(i + 1);
-            current = activityInstanceService.updateActivityInstanceSuccessor(current, next);
-            activitiesInstance.set(i, current);
-        }
-        for (int i = activitiesInstance.size() - 1; i > 0; i--) {
-            ActivityInstance current = activitiesInstance.get(i);
-            ActivityInstance previous = activitiesInstance.get(i - 1);
-            current = activityInstanceService.updateActivityInstancePredecessor(current, previous);
-            activitiesInstance.set(i, current);
-        }
-        try {
-            for (ActivityInstance activityInstance : activitiesInstance) {
-                activityInstanceRepository.save(activityInstance);
-            }
-            return workflowInstance;
-        } catch (DataAccessException error) {
-            System.out.println("Error: [connectActivitiesInstances][WorkflowService] " +
-                    error.getLocalizedMessage());
-        }
-        return null;
-    }
 
     public WorkflowInstance getWorkflowInstanceById(Long workflow_id) {
         Optional<WorkflowInstance> workflowInstance = workflowInstanceRepository.findById(workflow_id);
@@ -84,7 +59,8 @@ public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
     }
 
     public List<WorkflowInstance> getAllWorkflowInstanceForCustomer(Associates customer) {
-        List<WorkflowInstance> workflowInstances = customer.getWorkflowInstancesFor();
+
+        List<WorkflowInstance> workflowInstances = workflowInstanceRepository.findByCustomerId(customer);
         if (workflowInstances.isEmpty()) {
             return null;
         }
@@ -109,5 +85,4 @@ public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
         }
         return workflowInstances;
     }
-
 }

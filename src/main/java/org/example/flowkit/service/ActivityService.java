@@ -75,4 +75,12 @@ public class ActivityService implements ActivityServiceImpl {
         }
         return activities;
     }
+
+    public Activity getActivityById(String activity_id){
+        return activityRepository.findById(Long.valueOf(activity_id)).orElse(null);
+    }
+
+    public Activity getActivityByInstanceId(ActivityInstance activityInstance){
+        return activityRepository.findActivitiesByInstance(activityInstance);
+    }
 }

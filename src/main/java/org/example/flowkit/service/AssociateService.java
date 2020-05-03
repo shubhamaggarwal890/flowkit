@@ -1,9 +1,6 @@
 package org.example.flowkit.service;
 
-import org.example.flowkit.entity.Activity;
-import org.example.flowkit.entity.Associates;
-import org.example.flowkit.entity.Individual;
-import org.example.flowkit.entity.Roles;
+import org.example.flowkit.entity.*;
 import org.example.flowkit.repository.ActivityRepository;
 import org.example.flowkit.repository.AssociateRepository;
 import org.example.flowkit.service.implementation.AssociateServiceImpl;
@@ -14,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -148,6 +146,10 @@ public class AssociateService implements AssociateServiceImpl {
         return associateRepository.findAssociateForIndividual(individual);
     }
 
+    public List<Associates> findAssociateBasedRole(Roles role){
+        return associateRepository.findAssociateForRole(role);
+    }
+
     public Associates findAssociateManager(Associates associates) {
         return associateRepository.findAssociateManager(associates);
     }
@@ -160,4 +162,20 @@ public class AssociateService implements AssociateServiceImpl {
             System.out.println("Error: [updateRoleOfAssociate][AssociateService] " + error.getLocalizedMessage());
         }
     }
+
+    public Associates findAssociateBasedIndividualVertical(Associates associates, String vertical){
+        if(vertical.equals("Manager")){
+            return associateRepository.findAssociateManager(associates);
+        }
+        return null;
+    }
+
+    public Associates findAssociateByWorkflowInstance(WorkflowInstance workflowInstance) {
+        return associateRepository.findAssociateByWorkflowInstances(workflowInstance);
+    }
+
+    public Associates findAssociateByActivityAssociate(ActivityAssociates activityAssociate) {
+        return associateRepository.findAssociateByActivityAssociates(activityAssociate);
+    }
+
 }
