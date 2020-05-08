@@ -1,7 +1,10 @@
 package org.example.flowkit.controller;
 
 import org.example.flowkit.entity.*;
-import org.example.flowkit.jsonobject.*;
+import org.example.flowkit.jsonobject.ActivityInstanceRequest;
+import org.example.flowkit.jsonobject.AssociateRequest;
+import org.example.flowkit.jsonobject.WorkflowInstanceRequest;
+import org.example.flowkit.jsonobject.WorkflowInstanceResponse;
 import org.example.flowkit.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -178,7 +181,7 @@ public class WorkflowInstanceController {
             }
         }
 
-        if (activityInstanceService.updateNextActivityInstance(createdActivitiesInstance) == null) {
+        if (activityInstanceService.updateActivityInstancesIfAuto(createdActivitiesInstance) == null) {
             System.out.println("Error: [addWorkflowInstance] [WorkflowInstanceController] couldn't update next activity instance");
             return "Error:";
         }
@@ -186,17 +189,17 @@ public class WorkflowInstanceController {
     }
 
     @PostMapping("/get_workflows_instance")
-    public ResponseEntity<List<WorkflowInstanceResponse>> getWorkflowInstanceBasedAssociate(@RequestBody Associates associate) {
+    public ResponseEntity<List<WorkflowInstanceResponse>> getWorkflowInstanceBasedInitiator(@RequestBody Associates associate) {
         Associates customer = associateService.getAssociateById(associate.getId());
         if (customer == null) {
-            System.out.println("Error: [getWorkflowInstanceBasedAssociate] [WorkflowInstanceController] " +
+            System.out.println("Error: [getWorkflowInstanceBasedInitiator] [WorkflowInstanceController] " +
                     "couldn't find customer for the associate provided");
             return ResponseEntity.notFound().build();
         }
 
         List<WorkflowInstance> workflowInstances = workflowInstanceService.getAllWorkflowInstanceForCustomer(customer);
         if (workflowInstances == null) {
-            System.out.println("Error: [getWorkflowInstanceBasedAssociate] [WorkflowInstanceController] " +
+            System.out.println("Error: [getWorkflowInstanceBasedInitiator] [WorkflowInstanceController] " +
                     "workflow instance list is empty");
             return ResponseEntity.ok().body(null);
         }
@@ -205,7 +208,7 @@ public class WorkflowInstanceController {
 
         List<WorkflowInstanceResponse> workflowInstanceResponses = new ArrayList<>();
 
-        for (WorkflowInstance workflowInstance: workflowInstances){
+        for (WorkflowInstance workflowInstance : workflowInstances) {
             Workflow workflow = workflowInstance.getWorkflow();
             WorkflowInstanceResponse workflowInstanceResponse = new WorkflowInstanceResponse();
             workflowInstanceResponse.setId(workflowInstance.getId());
@@ -213,12 +216,12 @@ public class WorkflowInstanceController {
             workflowInstanceResponse.setDescription(workflowInstance.getDescription());
             workflowInstanceResponse.setWk_description(workflow.getDescription());
             Date deadline = new Date();
-            deadline.setTime(workflowInstance.getInstance_date().getTime() + Long.valueOf(workflow.getDeadlineDays())*24*60*60*1000);
+            deadline.setTime(workflowInstance.getInstance_date().getTime() + Long.valueOf(workflow.getDeadlineDays()) * 24 * 60 * 60 * 1000);
             workflowInstanceResponse.setDate(simpleDateFormat.format(workflowInstance.getInstance_date()));
             workflowInstanceResponse.setDeadline(simpleDateFormat.format(deadline));
             Associates initiator = associateService.findAssociateByWorkflowInstance(workflowInstance);
             AssociateRequest associateRequest = new AssociateRequest();
-            associateRequest.setName(initiator.getFirstName()+" "+initiator.getLastName());
+            associateRequest.setName(initiator.getFirstName() + " " + initiator.getLastName());
             associateRequest.setEmail(initiator.getEmailId());
             workflowInstanceResponse.setInitiator(associateRequest);
             workflowInstanceResponses.add(workflowInstanceResponse);
@@ -226,38 +229,46 @@ public class WorkflowInstanceController {
         return ResponseEntity.ok().body(workflowInstanceResponses);
     }
 
+    @PostMapping("/get_workflows_instance_associate")
+    public ResponseEntity<List<WorkflowInstanceResponse>> getWorkflowInstanceBasedAssociate(@RequestBody Associates associate) {
+        Associates associated = associateService.getAssociateById(associate.getId());
+        if (associated == null) {
+            System.out.println("Error: [getWorkflowInstanceBasedAssociate] [WorkflowInstanceController] " +
+                    "couldn't find customer for the associate provided");
+            return ResponseEntity.notFound().build();
+        }
 
-//    @PostMapping("/get_workflows_instance_associate")
-//    public List<WorkflowResponse> getWorkflowInstanceInAssociate(@RequestBody Associates associate) {
-//        List<WorkflowResponse> workflows = new ArrayList<>();
-//        List<WorkflowInstance> workflowInstances = workflowInstanceService.GetAllWorkflowInstanceForAssociate(
-//                String.valueOf(associate.getId()));
-//        if (workflowInstances == null) {
-//            return null;
-//        }
-//        for (WorkflowInstance workflowInstance : workflowInstances) {
-//            WorkflowResponse workflowResponse = new WorkflowResponse();
-//            Integer deadline_days = workflowInstance.getWorkflow().getDeadlineDays();
-//            Date deadline = new Date();
-//            deadline.setTime(workflowInstance.getInstance_date().getTime() + deadline_days * 24 * 60 * 60 * 1000);
-//            Associates associates = workflowInstance.getInitiator();
-//            Associates customer = workflowInstance.getWorkflowFor();
-//            workflowResponse.setWorkflow_id(workflowInstance.getId());
-//            workflowResponse.setWorkflow_title(workflowInstance.getTitle());
-//            workflowResponse.setCustomer_email(customer.getEmailId());
-//            workflowResponse.setCustomer_name(customer.getFirstName() + " " + customer.getLastName());
-//            workflowResponse.setCreator_name(associates.getFirstName() + " " + associates.getLastName());
-//            workflowResponse.setCreator_email(associates.getEmailId());
-//            workflowResponse.setInitiate_date(workflowInstance.getInstance_date().toString());
-//            workflowResponse.setDeadline_date(deadline.toString());
-//            workflows.add(workflowResponse);
-//        }
-//        if (workflows.isEmpty()) {
-//            return null;
-//        }
-//        return workflows;
-//    }
+        List<WorkflowInstance> workflowInstances = workflowInstanceService.getAllWorkflowInstanceRelatedAssociate(
+                associated);
+        if (workflowInstances == null || workflowInstances.isEmpty()) {
+            System.out.println("Error: [getWorkflowInstanceBasedAssociate] [WorkflowInstanceController] " +
+                    "workflow instance list is empty");
+            return ResponseEntity.ok().body(null);
+        }
 
+        String pattern = "E, dd MMM yyyy HH:mm";
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
 
+        List<WorkflowInstanceResponse> workflowInstanceResponses = new ArrayList<>();
 
+        for (WorkflowInstance workflowInstance : workflowInstances) {
+            Workflow workflow = workflowInstance.getWorkflow();
+            WorkflowInstanceResponse workflowInstanceResponse = new WorkflowInstanceResponse();
+            workflowInstanceResponse.setId(workflowInstance.getId());
+            workflowInstanceResponse.setTitle(workflowInstance.getTitle());
+            workflowInstanceResponse.setDescription(workflowInstance.getDescription());
+            workflowInstanceResponse.setWk_description(workflow.getDescription());
+            Date deadline = new Date();
+            deadline.setTime(workflowInstance.getInstance_date().getTime() + Long.valueOf(workflow.getDeadlineDays()) * 24 * 60 * 60 * 1000);
+            workflowInstanceResponse.setDate(simpleDateFormat.format(workflowInstance.getInstance_date()));
+            workflowInstanceResponse.setDeadline(simpleDateFormat.format(deadline));
+            Associates initiator = associateService.findAssociateByWorkflowInstance(workflowInstance);
+            AssociateRequest associateRequest = new AssociateRequest();
+            associateRequest.setName(initiator.getFirstName() + " " + initiator.getLastName());
+            associateRequest.setEmail(initiator.getEmailId());
+            workflowInstanceResponse.setInitiator(associateRequest);
+            workflowInstanceResponses.add(workflowInstanceResponse);
+        }
+        return ResponseEntity.ok().body(workflowInstanceResponses);
+    }
 }

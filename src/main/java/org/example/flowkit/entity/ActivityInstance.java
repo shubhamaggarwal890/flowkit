@@ -1,11 +1,12 @@
 package org.example.flowkit.entity;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity(name = "activity_instance")
-public class ActivityInstance {
+public class ActivityInstance implements Serializable {
 
     private @Id @GeneratedValue Long id;
 

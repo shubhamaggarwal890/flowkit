@@ -33,6 +33,8 @@ public class WorkflowInstance {
     @OneToMany(mappedBy = "workflowInstance", fetch = FetchType.LAZY)
     private List<ActivityInstance> activityInstances = new ArrayList<>();
 
+    private Boolean initiator_alert;
+
     public Workflow getWorkflow() {
         return workflow;
     }
@@ -96,5 +98,13 @@ public class WorkflowInstance {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Boolean getInitiator_alert() {
+        return initiator_alert;
+    }
+
+    public void setInitiator_alert(Boolean initiator_alert) {
+        this.initiator_alert = initiator_alert;
     }
 }

@@ -39,7 +39,6 @@ public class AssociateController {
         Roles roles = rolesService.getRoleById(associates.getRole().getId());
         Associates manager = null;
         if(associates.getManager() != null){
-            System.out.println("We found the manager");
             manager = associateService.getAssociateByEmailID(associates.getManager().getEmailId());
             if(manager == null){
                 return "Manager:";
@@ -87,7 +86,7 @@ public class AssociateController {
         }
         Associates manager = associateService.findAssociateManager(associates1);
         if(manager==null){
-            return associateRequest;
+            return null;
         }
         associateRequest.setName(manager.getFirstName()+" "+manager.getLastName());
         associateRequest.setEmail(manager.getEmailId());

@@ -20,7 +20,8 @@ public class ActivityAssociates implements Serializable {
     // ACCEPT, REJECT, PENDING
     private String status;
 
-    private boolean alert;
+    private boolean initiator_notification;
+    private boolean associate_notification;
 
     public ActivityAssociates() {
     }
@@ -65,11 +66,19 @@ public class ActivityAssociates implements Serializable {
         this.status = status;
     }
 
-    public boolean isAlert() {
-        return alert;
+    public boolean isInitiator_notification() {
+        return initiator_notification;
     }
 
-    public void setAlert(boolean alert) {
-        this.alert = alert;
+    public void setInitiator_notification(boolean initiator_notification) {
+        this.initiator_notification = initiator_notification;
+    }
+
+    public boolean isAssociate_notification() {
+        return associate_notification;
+    }
+
+    public void setAssociate_notification(boolean associate_notification) {
+        this.associate_notification = associate_notification;
     }
 }

@@ -14,5 +14,4 @@ public interface ActivityAssociateRepository extends CrudRepository<ActivityAsso
             "a.activity_instance_associate=b")
     List<ActivityAssociates> getActivityAssociatesByActivityInstance(ActivityInstance activityInstance);
 
-
 }

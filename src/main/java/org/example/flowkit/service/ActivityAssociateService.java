@@ -21,96 +21,13 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
     }
 
     @Autowired
-    public void SetActivityAssociateService(ActivityAssociateRepository activityAssociateRepository) {
-        this.activityAssociateRepository = activityAssociateRepository;
-    }
-
-    @Autowired
     public void setAssociateService(AssociateService associateService) {
         this.associateService = associateService;
     }
 
-    public ActivityAssociates saveActivityInstanceAssociateStatus(ActivityAssociates activityAssociates,
-                                                                  String status) {
-        activityAssociates.setStatus(status);
-        try {
-            activityAssociateRepository.save(activityAssociates);
-            return activityAssociates;
-        } catch (DataAccessException error) {
-            System.out.println("ERROR: [saveActivityInstanceAssociateStatus][ActivityAssociateService] " +
-                    error.getLocalizedMessage());
-        }
-        return null;
-    }
-
-    // Role, individual and user specified based status update in activity_associate
-    public ActivityAssociates updateActivityInstanceAssociateBasedRole(ActivityInstance activityInstance,
-                                                                       ActivityAssociates activityAssociate,
-                                                                       String remark, String status) {
-        Activity activity = activityInstance.getActivity();
-        List<ActivityAssociates> activityAssociates = activityInstance.getActivityInstanceAssociates();
-        ActivityAssociates returnActivityAssociate = null;
-        if (activity.isAll_any_role()) {
-            if (status.equals("REJECT")) {
-                for (ActivityAssociates associate : activityAssociates) {
-                    if (activityAssociate.equals(associate)) {
-                        associate.setRemark(remark);
-                        returnActivityAssociate = saveActivityInstanceAssociateStatus(associate, "REJECT");
-                    } else {
-                        associate.setRemark(null);
-                        saveActivityInstanceAssociateStatus(associate, "REJECT");
-                    }
-
-                }
-            } else {
-                for (ActivityAssociates associate : activityAssociates) {
-                    if (activityAssociate.equals(associate)) {
-                        associate.setRemark(remark);
-                        returnActivityAssociate = saveActivityInstanceAssociateStatus(associate, "APPROVE");
-                        break;
-                    }
-                }
-            }
-        } else {
-            for (ActivityAssociates associate : activityAssociates) {
-                if (activityAssociate.equals(associate)) {
-                    associate.setRemark(remark);
-                    returnActivityAssociate = saveActivityInstanceAssociateStatus(associate, status);
-                } else {
-                    associate.setRemark(null);
-                    saveActivityInstanceAssociateStatus(associate, status);
-                }
-            }
-        }
-        return returnActivityAssociate;
-    }
-
-    public ActivityAssociates updateActivityInstanceAssociateBasedIndividual(ActivityInstance activityInstance,
-                                                                             ActivityAssociates activityAssociate,
-                                                                             String remark, String status) {
-        List<ActivityAssociates> activityAssociates = activityInstance.getActivityInstanceAssociates();
-        ActivityAssociates returnActivityAssociate = null;
-        for (ActivityAssociates associate : activityAssociates) {
-            if (activityAssociate.equals(associate)) {
-                associate.setRemark(remark);
-                returnActivityAssociate = saveActivityInstanceAssociateStatus(associate, status);
-            } else {
-                associate.setRemark(null);
-                saveActivityInstanceAssociateStatus(associate, status);
-            }
-        }
-        return returnActivityAssociate;
-    }
-
-    public ActivityAssociates updateActivityInstanceAssociateBasedUser(ActivityInstance activityInstance,
-                                                                       ActivityAssociates activityAssociate,
-                                                                       String remark, String status) {
-        return updateActivityInstanceAssociateBasedIndividual(activityInstance, activityAssociate, remark, status);
-    }
-
-
-    public ActivityAssociates getActivityAssociateById(Long id) {
-        return activityAssociateRepository.findById(id).orElse(null);
+    @Autowired
+    public void setActivityAssociateRepository(ActivityAssociateRepository activityAssociateRepository) {
+        this.activityAssociateRepository = activityAssociateRepository;
     }
 
     public List<ActivityAssociates> addActivityInstanceAssociatesBasedRole(ActivityInstance activityInstance,
@@ -125,8 +42,7 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
             activityAssociate.setActivity_instance_associate(activityInstance);
             activityAssociate.setAssociates(associate);
             activityAssociate.setStatus("PENDING");
-            activityAssociate.setAlert(false);
-            try {
+                try {
                 activityAssociateRepository.save(activityAssociate);
                 activityAssociates.add(activityAssociate);
             } catch (DataAccessException error) {
@@ -149,17 +65,19 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
                 String other = activity.getAssociate();
                 System.out.println(other);
                 if (other == null) {
-                    System.out.println("Error: [addActivityInstanceAssociatesBasedIndividual] [ActivityAssociateService] couldn't find an associate to it");
+                    System.out.println("Error: [addActivityInstanceAssociatesBasedIndividual] " +
+                            "[ActivityAssociateService] couldn't find an associate to it");
                     return null;
                 } else {
                     manager = associateService.getAssociateByEmailID(other);
 
-                    if(manager == null){
-                        System.out.println("Error: [addActivityInstanceAssociatesBasedIndividual] [ActivityAssociateService] couldn't find manager to it");
+                    if (manager == null) {
+                        System.out.println("Error: [addActivityInstanceAssociatesBasedIndividual] " +
+                                "[ActivityAssociateService] couldn't find manager to it");
                     }
                     individualAssociate = manager;
                 }
-            }else{
+            } else {
                 individualAssociate = manager;
             }
         }
@@ -194,8 +112,30 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
         }
     }
 
-    public List<ActivityAssociates> getActivityAssociatesByActivityInstance(ActivityInstance activityInstance){
+    public List<ActivityAssociates> getActivityAssociatesByActivityInstance(ActivityInstance activityInstance) {
         return activityAssociateRepository.getActivityAssociatesByActivityInstance(activityInstance);
+    }
+
+    public ActivityAssociates updateStatusRemarkActivityAssociate(ActivityAssociates activityAssociates, String status,
+                                                                  String remark) {
+        if(remark == null){
+            if(activityAssociates.getRemark() == null){
+                activityAssociates.setRemark(null);
+            }
+        }else{
+            activityAssociates.setRemark(remark);
+        }
+        if(activityAssociates.getStatus().equals("PENDING")){
+            activityAssociates.setStatus(status);
+        }
+        try {
+            activityAssociateRepository.save(activityAssociates);
+            return activityAssociates;
+        } catch (DataAccessException error) {
+            System.out.println("ERROR: [updateStatusRemarkActivityAssociate][ActivityAssociateService] " +
+                    error.getLocalizedMessage());
+            return null;
+        }
     }
 
 }

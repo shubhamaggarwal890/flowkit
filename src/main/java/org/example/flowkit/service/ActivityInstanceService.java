@@ -15,14 +15,26 @@ import java.util.Optional;
 public class ActivityInstanceService implements ActivityInstanceServiceImpl {
 
     private ActivityInstanceRepository activityInstanceRepository;
+    private ActivityAssociateService activityAssociateService;
     private ActivityService activityService;
+    private AssociateService associateService;
 
     public ActivityInstanceService() {
     }
 
     @Autowired
+    public void setAssociateService(AssociateService associateService) {
+        this.associateService = associateService;
+    }
+
+    @Autowired
     public void setActivityInstanceRepository(ActivityInstanceRepository activityInstanceRepository) {
         this.activityInstanceRepository = activityInstanceRepository;
+    }
+
+    @Autowired
+    public void setActivityAssociateService(ActivityAssociateService activityAssociateService) {
+        this.activityAssociateService = activityAssociateService;
     }
 
     @Autowired
@@ -81,44 +93,88 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
         return activityInstances;
     }
 
-//    public ActivityInstance getActivityInstanceById(Long activity_instance_id) {
-//        Optional<ActivityInstance> activityInstance = activityInstanceRepository.findById(activity_instance_id);
-//        return activityInstance.orElse(null);
-//    }
+    public List<ActivityInstance> getAllActivitiesInstanceAssociateForWorkflowInstance(
+            WorkflowInstance workflowInstance) {
 
-//    public List<ActivityInstance> getAllActivitiesInstancesForAssociateForWorkflowInstance(WorkflowInstance workflowInstance) {
-//        List<ActivityInstance> activityInstancesForAssociate = new ArrayList<>();
-//        List<ActivityInstance> activityInstances = getAllActivitiesInstanceForWorkflowInstance(workflowInstance);
-//        if (activityInstances == null) {
-//            return null;
-//        }
-//        ActivityInstance activityInstanceStart = null;
-//        for (ActivityInstance activityInstance : activityInstances) {
-//            if (activityInstance.getPredecessor() == null) {
-//                activityInstanceStart = activityInstance;
-//                break;
-//            }
-//        }
-//        if (activityInstanceStart == null) {
-//            return null;
-//        }
-//
-//        while (activityInstanceStart.getStatus().equals("ACCEPT")) {
-//            activityInstancesForAssociate.add(activityInstanceStart);
-//            activityInstanceStart = activityInstanceStart.getSuccessor();
-//        }
-//        activityInstancesForAssociate.add(activityInstanceStart);
-//
-//        if (activityInstancesForAssociate.isEmpty()) {
-//            return null;
-//        }
-//        return activityInstancesForAssociate;
-//    }
+        List<ActivityInstance> activityInstances = activityInstanceRepository.getActivityInstanceByWorkflowInstance(workflowInstance);
+        if (activityInstances.isEmpty()) return null;
+        ActivityInstance start = null;
+        List<ActivityInstance> activityInstanceList = new ArrayList<>();
+        for (ActivityInstance activityInstance : activityInstances) {
+            ActivityInstance predecessor = activityInstance.getSource();
+            if (predecessor == null) {
+                start = activityInstance;
+            }
+        }
+        while (start != null) {
+            if (start.getStatus().equals("ACCEPT")) {
+                activityInstanceList.add(start);
+            } else {
+                start.setDestination(null);
+                activityInstanceList.add(start);
+                return activityInstanceList;
+            }
+            start = start.getDestination();
+        }
+        return null;
+    }
+
+    public ActivityInstance getActivityInstanceById(Long activity_instance_id) {
+        Optional<ActivityInstance> activityInstance = activityInstanceRepository.findById(activity_instance_id);
+        return activityInstance.orElse(null);
+    }
+
+    public ActivityInstance saveAssociateResponseActivity(ActivityInstance activityInstance, Associates associate,
+                                                          String status, String remark, boolean all_any) {
+        List<ActivityAssociates> activityAssociates = activityAssociateService.getActivityAssociatesByActivityInstance(
+                activityInstance);
+        if (activityAssociates == null || activityAssociates.isEmpty()) {
+            return null;
+        }
+
+        if (all_any) {
+            if (status.equals("REJECT")) {
+                for (ActivityAssociates activityAssociate : activityAssociates) {
+                    Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
+                    if (associates.getId().equals(associate.getId())) {
+                        activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
+                    } else {
+                        activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, null);
+                    }
+                }
+                return setActivityInstanceStatus(activityInstance, status);
+            }
+            int count = 0;
+            for (ActivityAssociates activityAssociate : activityAssociates) {
+                Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
+                if (associates.getId().equals(associate.getId())) {
+                    count += 1;
+                    activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
+                } else if (activityAssociate.getStatus().equals("ACCEPT")) {
+                    count += 1;
+                }
+            }
+            if (activityAssociates.size() == count) {
+                return setActivityInstanceStatus(activityInstance, status);
+            }
+            return activityInstance;
+        } else {
+            for (ActivityAssociates activityAssociate : activityAssociates) {
+                Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
+                if (associates.getId().equals(associate.getId())) {
+                    activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
+                } else {
+                    activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, null);
+                }
+            }
+            return setActivityInstanceStatus(activityInstance, status);
+        }
+    }
+
 
     public ActivityInstance setActivityInstanceStatus(ActivityInstance activityInstance, String status) {
-        activityInstance.setStatus(status);
         try {
-            activityInstanceRepository.save(activityInstance);
+            activityInstanceRepository.updateActivityInstance(activityInstance, status);
             return activityInstance;
         } catch (DataAccessException error) {
             System.out.println("Error: [setActivityInstanceStatus][ActivityInstanceService] " +
@@ -127,74 +183,33 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
         return null;
     }
 
-    public ActivityInstance updateActivityInstanceStatusBasedRole(ActivityInstance activityInstance) {
-        Activity activity = activityInstance.getActivity();
-        boolean flag = false;
-        List<ActivityAssociates> activityAssociates = activityInstance.getActivityInstanceAssociates();
-        if (activity.isAll_any_role()) {
-            for (ActivityAssociates activityAssociate : activityAssociates) {
-                if (activityAssociate.getStatus().equals("REJECT")) {
-                    return setActivityInstanceStatus(activityInstance, "REJECT");
-                } else if (activityAssociate.getStatus().equals("ACCEPT")) {
-                    activityInstance.setStatus("ACCEPT");
-                } else {
-                    flag = true;
-                    activityInstance.setStatus("PENDING");
-                }
-            }
-        } else {
-            for (ActivityAssociates activityAssociate : activityInstance.getActivityInstanceAssociates()) {
-                if (activityAssociate.getStatus().equals("REJECT")) {
-                    return setActivityInstanceStatus(activityInstance, "REJECT");
-                } else if (activityAssociate.getStatus().equals("ACCEPT")) {
-                    return setActivityInstanceStatus(activityInstance, "ACCEPT");
-                } else {
-                    flag = true;
-                }
-            }
-        }
-        if (flag) {
-            return setActivityInstanceStatus(activityInstance, "PENDING");
-        }
-        return setActivityInstanceStatus(activityInstance, "ACCEPT");
-    }
-
-    public ActivityInstance updateActivityInstanceStatusBasedIndividual(ActivityInstance activityInstance) {
-        for (ActivityAssociates activityAssociates : activityInstance.getActivityInstanceAssociates()) {
-            return setActivityInstanceStatus(activityInstance, activityAssociates.getStatus());
-        }
-        return null;
-    }
-
-    public ActivityInstance updateActivityInstanceStatusBasedUserSpecific(ActivityInstance activityInstance) {
-        for (ActivityAssociates activityAssociates : activityInstance.getActivityInstanceAssociates()) {
-            return setActivityInstanceStatus(activityInstance, activityAssociates.getStatus());
-        }
-        return null;
-    }
-
-    public ActivityInstance updateNextActivityInstance(List<ActivityInstance> activityInstances){
-
+    public ActivityInstance updateActivityInstancesIfAuto(List<ActivityInstance> activityInstances) {
         ActivityInstance start = null;
-        for (ActivityInstance activityInstance: activityInstances) {
+        ActivityInstance previous = null;
+        for (ActivityInstance activityInstance : activityInstances) {
             ActivityInstance predecessor = activityInstance.getSource();
             if (predecessor == null) {
                 start = activityInstance;
             }
         }
-
-        while(start!=null) {
+        while (start != null) {
             Activity activity = activityService.getActivityByInstanceId(start);
-            if(activity.isAuto()) {
-                start = setActivityInstanceStatus(start, "ACCEPT");
-                if(start == null) {
+            if (activity == null) {
+                System.out.println("Error: [updateActivityInstances][ActivityInstanceService] activity not found");
+                return null;
+            } else if (activity.isAuto() && start.getStatus().equals("PENDING")) {
+                ActivityInstance output = setActivityInstanceStatus(start, "ACCEPT");
+                if (output == null) {
+                    System.out.println("Error: [updateActivityInstances][ActivityInstanceService] failed to update " +
+                            "activity instance for auto");
                     return null;
                 }
-                start = start.getDestination();
-            }else {
+            }else if(start.getStatus().equals("PENDING")){
                 return start;
             }
+            previous = start;
+            start = start.getDestination();
         }
-        return null;
+        return previous;
     }
 }

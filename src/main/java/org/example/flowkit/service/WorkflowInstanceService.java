@@ -1,6 +1,9 @@
 package org.example.flowkit.service;
 
-import org.example.flowkit.entity.*;
+import org.example.flowkit.entity.ActivityInstance;
+import org.example.flowkit.entity.Associates;
+import org.example.flowkit.entity.Workflow;
+import org.example.flowkit.entity.WorkflowInstance;
 import org.example.flowkit.repository.ActivityInstanceRepository;
 import org.example.flowkit.repository.WorkflowInstanceRepository;
 import org.example.flowkit.service.implementation.WorkflowInstanceServiceImpl;
@@ -67,21 +70,22 @@ public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
         return workflowInstances;
     }
 
-    public List<WorkflowInstance> getAllWorkflowInstanceRelatedAssociate(Associates associate){
+
+    public List<WorkflowInstance> getAllWorkflowInstanceRelatedAssociate(Associates associate) {
+        List<ActivityInstance> activityInstances = activityInstanceRepository.getActivityInstanceByActivityAssociate(associate, "PENDING");
+        if (activityInstances == null || activityInstances.isEmpty()) {
+            return null;
+        }
         List<WorkflowInstance> workflowInstances = new ArrayList<>();
-        List<ActivityAssociates> activityAssociates = associate.getActivityAssociates();
-        for (ActivityAssociates activityAssociates1 : activityAssociates) {
-            ActivityInstance activityInstance = activityAssociates1.getActivity_instance_associate();
-            if (activityInstance.getStatus().equals("PENDING") &&
-                    activityInstance.getPredecessor().getStatus().equals("ACCEPT")) {
-                WorkflowInstance workflowInstance = activityInstance.getWorkflowInstance();
-                if (!workflowInstances.contains(workflowInstance)) {
+        for (ActivityInstance activityInstance : activityInstances) {
+            if (activityInstance.getSource().getStatus().equals("ACCEPT")) {
+                WorkflowInstance workflowInstance = workflowInstanceRepository.getWorkflowInstanceByActivityInstances(activityInstance);
+                if (workflowInstance == null) {
+                    return null;
+                } else {
                     workflowInstances.add(workflowInstance);
                 }
             }
-        }
-        if (workflowInstances.isEmpty()) {
-            return null;
         }
         return workflowInstances;
     }
