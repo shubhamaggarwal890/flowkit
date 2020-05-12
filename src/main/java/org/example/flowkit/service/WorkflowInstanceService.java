@@ -20,19 +20,25 @@ import java.util.Optional;
 public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
 
     private WorkflowInstanceRepository workflowInstanceRepository;
-    private ActivityInstanceService activityInstanceService;
     private ActivityInstanceRepository activityInstanceRepository;
+    private AssociateService associateService;
 
     public WorkflowInstanceService() {
     }
 
     @Autowired
-    public void SetWorkflowInstanceService(WorkflowInstanceRepository workflowInstanceRepository,
-                                           ActivityInstanceService activityInstanceService,
-                                           ActivityInstanceRepository activityInstanceRepository) {
+    public void setWorkflowInstanceRepository(WorkflowInstanceRepository workflowInstanceRepository) {
         this.workflowInstanceRepository = workflowInstanceRepository;
-        this.activityInstanceService = activityInstanceService;
+    }
+
+    @Autowired
+    public void setActivityInstanceRepository(ActivityInstanceRepository activityInstanceRepository) {
         this.activityInstanceRepository = activityInstanceRepository;
+    }
+
+    @Autowired
+    public void setAssociateService(AssociateService associateService) {
+        this.associateService = associateService;
     }
 
     public WorkflowInstance createWorkflowInstance(String title, String description, Associates initiator,
@@ -62,7 +68,6 @@ public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
     }
 
     public List<WorkflowInstance> getAllWorkflowInstanceForCustomer(Associates customer) {
-
         List<WorkflowInstance> workflowInstances = workflowInstanceRepository.findByCustomerId(customer);
         if (workflowInstances.isEmpty()) {
             return null;
@@ -72,7 +77,8 @@ public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
 
 
     public List<WorkflowInstance> getAllWorkflowInstanceRelatedAssociate(Associates associate) {
-        List<ActivityInstance> activityInstances = activityInstanceRepository.getActivityInstanceByActivityAssociate(associate, "PENDING");
+        List<ActivityInstance> activityInstances = activityInstanceRepository.getActivityInstanceByActivityAssociate(
+                associate, "PENDING");
         if (activityInstances == null || activityInstances.isEmpty()) {
             return null;
         }
@@ -84,9 +90,19 @@ public class WorkflowInstanceService implements WorkflowInstanceServiceImpl {
                     return null;
                 } else {
                     workflowInstances.add(workflowInstance);
+                    Associates customer = associateService.findAssociateByWorkflowInstance(workflowInstance);
+                    if (customer == null) {
+                        System.out.println("Error: [getAllWorkflowInstanceRelatedAssociate][WorkflowInstanceService] " +
+                                "no customer for workflow instance found");
+                        return null;
+                    }
                 }
             }
         }
         return workflowInstances;
+    }
+
+    public WorkflowInstance getWorkflowInstanceByActivityInstance(ActivityInstance activityInstance){
+        return workflowInstanceRepository.getWorkflowInstanceByActivityInstances(activityInstance);
     }
 }

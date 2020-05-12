@@ -211,11 +211,26 @@ public class WorkflowInstanceController {
         for (WorkflowInstance workflowInstance : workflowInstances) {
             Workflow workflow = workflowInstance.getWorkflow();
             WorkflowInstanceResponse workflowInstanceResponse = new WorkflowInstanceResponse();
+            List<ActivityInstance> activityInstances = activityInstanceService.
+                    getAllActivitiesInstanceForWorkflowInstance(workflowInstance);
+            String status = "";
+            for (ActivityInstance activityInstance: activityInstances){
+                if(activityInstance.getStatus().equals("PENDING")){
+                    status = activityInstance.getStatus();
+                    break;
+                }else if (activityInstance.getStatus().equals("REJECT")){
+                    status = activityInstance.getStatus()+"ED";
+                    break;
+                }else{
+                    status = activityInstance.getStatus()+"ED";
+                }
+            }
             workflowInstanceResponse.setId(workflowInstance.getId());
-            workflowInstanceResponse.setTitle(workflowInstance.getTitle());
+            workflowInstanceResponse.setTitle(workflowInstance.getTitle()+" - "+status);
             workflowInstanceResponse.setDescription(workflowInstance.getDescription());
             workflowInstanceResponse.setWk_description(workflow.getDescription());
             Date deadline = new Date();
+
             deadline.setTime(workflowInstance.getInstance_date().getTime() + Long.valueOf(workflow.getDeadlineDays()) * 24 * 60 * 60 * 1000);
             workflowInstanceResponse.setDate(simpleDateFormat.format(workflowInstance.getInstance_date()));
             workflowInstanceResponse.setDeadline(simpleDateFormat.format(deadline));

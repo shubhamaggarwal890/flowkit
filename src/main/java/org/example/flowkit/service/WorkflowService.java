@@ -27,10 +27,17 @@ public class WorkflowService implements WorkflowServiceImpl {
     }
 
     @Autowired
-    public void SetWorkflowService(WorkFlowRepository workFlowRepository, ActivityService activityService,
-                           ActivityRepository activityRepository) {
+    public void setWorkFlowRepository(WorkFlowRepository workFlowRepository) {
         this.workFlowRepository = workFlowRepository;
+    }
+
+    @Autowired
+    public void setActivityService(ActivityService activityService) {
         this.activityService = activityService;
+    }
+
+    @Autowired
+    public void setActivityRepository(ActivityRepository activityRepository) {
         this.activityRepository = activityRepository;
     }
 

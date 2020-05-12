@@ -2,7 +2,6 @@ package org.example.flowkit.service;
 
 import org.example.flowkit.entity.Associates;
 import org.example.flowkit.entity.Document;
-import org.example.flowkit.repository.ActivityInstanceRepository;
 import org.example.flowkit.repository.DocumentRepository;
 import org.example.flowkit.service.implementation.DocumentServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +26,6 @@ import java.util.Optional;
 public class DocumentService implements DocumentServiceImpl {
 
     private DocumentRepository documentRepository;
-    private ActivityInstanceRepository activityInstanceRepository;
 
     @Value("${document_upload_location}")
     private String document_location;
@@ -36,9 +34,8 @@ public class DocumentService implements DocumentServiceImpl {
     }
 
     @Autowired
-    public void SetDocumentService(DocumentRepository documentRepository, ActivityInstanceRepository activityInstanceRepository) {
+    public void setDocumentRepository(DocumentRepository documentRepository) {
         this.documentRepository = documentRepository;
-        this.activityInstanceRepository = activityInstanceRepository;
     }
 
     public Document addDocument(String title, String path, Associates uploader) {
@@ -109,7 +106,7 @@ public class DocumentService implements DocumentServiceImpl {
         return null;
     }
 
-    public Document getDocumentById(Long document_id){
+    public Document getDocumentById(Long document_id) {
         Optional<Document> document = documentRepository.findById(document_id);
         return document.orElse(null);
 

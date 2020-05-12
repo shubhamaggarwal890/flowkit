@@ -2,6 +2,7 @@ package org.example.flowkit.service;
 
 import org.example.flowkit.entity.*;
 import org.example.flowkit.repository.ActivityInstanceRepository;
+import org.example.flowkit.repository.WorkflowInstanceRepository;
 import org.example.flowkit.service.implementation.ActivityInstanceServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
@@ -18,6 +19,8 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
     private ActivityAssociateService activityAssociateService;
     private ActivityService activityService;
     private AssociateService associateService;
+    private ToastsService toastService;
+    private WorkflowInstanceRepository workflowInstanceRepository;
 
     public ActivityInstanceService() {
     }
@@ -41,6 +44,18 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
     public void setActivityService(ActivityService activityService) {
         this.activityService = activityService;
     }
+
+    @Autowired
+    public void setToastService(ToastsService toastService) {
+        this.toastService = toastService;
+    }
+
+
+    @Autowired
+    public void setWorkflowInstanceRepository(WorkflowInstanceRepository workflowInstanceRepository) {
+        this.workflowInstanceRepository = workflowInstanceRepository;
+    }
+
 
     public ActivityInstance createActivityInstance(String title, String remark, String status, Activity activity,
                                                    Document document, WorkflowInstance workflowInstance) {
@@ -88,7 +103,18 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
     }
 
     public List<ActivityInstance> getAllActivitiesInstanceForWorkflowInstance(WorkflowInstance workflowInstance) {
-        List<ActivityInstance> activityInstances = activityInstanceRepository.getActivityInstanceByWorkflowInstance(workflowInstance);
+        List<ActivityInstance> activityInstances = new ArrayList<>();
+        ActivityInstance start = null;
+        for (ActivityInstance activityInstance : activityInstanceRepository.getActivityInstanceByWorkflowInstance(workflowInstance)) {
+            ActivityInstance predecessor = activityInstance.getSource();
+            if (predecessor == null) {
+                start = activityInstance;
+            }
+        }
+        while (start != null) {
+            activityInstances.add(start);
+            start = start.getDestination();
+        }
         if (activityInstances.isEmpty()) return null;
         return activityInstances;
     }
@@ -131,17 +157,37 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
         if (activityAssociates == null || activityAssociates.isEmpty()) {
             return null;
         }
+        WorkflowInstance workflowInstance = workflowInstanceRepository.getWorkflowInstanceByActivityInstances(
+                activityInstance);
+        if (workflowInstance == null) {
+            System.out.println("Error: [saveAssociateResponseActivity][ActivityInstanceService] no workflow instance " +
+                    "for given activity instance found");
+            return null;
+        }
+        Associates customer = associateService.findAssociateByWorkflowInstance(workflowInstance);
+        if (customer == null) {
+            System.out.println("Error: [saveAssociateResponseActivity][ActivityInstanceService] no customer for " +
+                    "workflow instance found");
+            return null;
+        }
 
         if (all_any) {
             if (status.equals("REJECT")) {
                 for (ActivityAssociates activityAssociate : activityAssociates) {
                     Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
                     if (associates.getId().equals(associate.getId())) {
+                        String message = "Hey, Your " + workflowInstance.getTitle() + " is rejected by " +
+                                associate.getFirstName() + " " + associate.getLastName();
+                        toastService.addNotificationForAssociate(message, customer, activityInstance);
                         activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
                     } else {
                         activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, null);
                     }
                 }
+//                ActivityInstance next = activityInstance.getDestination();
+//                if (next != null) {
+//                    toastService.setToastsForAssociate(activityInstance, next);
+//                }
                 return setActivityInstanceStatus(activityInstance, status);
             }
             int count = 0;
@@ -149,12 +195,23 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
                 Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
                 if (associates.getId().equals(associate.getId())) {
                     count += 1;
+                    String message = "Hey, " + associate.getFirstName() + " " + associate.getLastName()
+                            + "has approved your " + activityInstance.getTitle() + " in " + workflowInstance.getTitle();
+                    toastService.addNotificationForAssociate(message, customer, activityInstance);
                     activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
                 } else if (activityAssociate.getStatus().equals("ACCEPT")) {
                     count += 1;
                 }
             }
             if (activityAssociates.size() == count) {
+                String message = "Hey, Your " + activityInstance.getTitle() + " in " + workflowInstance.getTitle()
+                        + " is approved by all the associates";
+                toastService.addNotificationForAssociate(message, customer, activityInstance);
+
+//                ActivityInstance next = activityInstance.getDestination();
+//                if (next != null) {
+//                    toastService.setToastsForAssociate(activityInstance, next);
+//                }
                 return setActivityInstanceStatus(activityInstance, status);
             }
             return activityInstance;
@@ -162,11 +219,19 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
             for (ActivityAssociates activityAssociate : activityAssociates) {
                 Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
                 if (associates.getId().equals(associate.getId())) {
+                    String message = "Hey, Your " + activityInstance.getTitle() + " in " + workflowInstance.getTitle()
+                            + " is " + status.toLowerCase() + "ed by " + associate.getFirstName() + " " +
+                            associate.getLastName();
+                    toastService.addNotificationForAssociate(message, customer, activityInstance);
                     activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
                 } else {
                     activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, null);
                 }
             }
+//            ActivityInstance next = activityInstance.getDestination();
+//            if (next != null) {
+//                toastService.setToastsForAssociate(activityInstance, next);
+//            }
             return setActivityInstanceStatus(activityInstance, status);
         }
     }
@@ -199,16 +264,37 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
                 return null;
             } else if (activity.isAuto() && start.getStatus().equals("PENDING")) {
                 ActivityInstance output = setActivityInstanceStatus(start, "ACCEPT");
+                toastService.setToastsForAssociate(previous, start);
                 if (output == null) {
                     System.out.println("Error: [updateActivityInstances][ActivityInstanceService] failed to update " +
                             "activity instance for auto");
                     return null;
                 }
-            }else if(start.getStatus().equals("PENDING")){
+            } else if (start.getStatus().equals("PENDING")) {
+                toastService.setToastsForAssociate(previous, start);
                 return start;
             }
             previous = start;
             start = start.getDestination();
+            if (start == null) {
+                WorkflowInstance workflowInstance = workflowInstanceRepository.getWorkflowInstanceByActivityInstances(
+                        previous);
+                if (workflowInstance == null) {
+                    System.out.println("Error: [updateActivityInstancesIfAuto][ActivityInstanceService] no " +
+                            "workflow instance for given activity instance found");
+                    return null;
+                } else {
+                    Associates customer = associateService.findAssociateByWorkflowInstance(workflowInstance);
+                    if (customer == null) {
+                        System.out.println("Error: [updateActivityInstancesIfAuto][ActivityInstanceService] no " +
+                                "customer for workflow instance found");
+                        return null;
+                    }
+                    String message = "Hey, Your " + workflowInstance.getTitle()
+                            + " is approved by all the associates";
+                    toastService.addNotificationForAssociate(message, customer, previous);
+                }
+            }
         }
         return previous;
     }

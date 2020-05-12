@@ -24,6 +24,7 @@ public class ActivityInstanceController {
     private AssociateService associateService;
     private ActivityAssociateService activityAssociateService;
     private ActivityService activityService;
+    private ToastsService toastsService;
 
     @Autowired
     public void setActivityAssociateService(ActivityAssociateService activityAssociateService) {
@@ -50,6 +51,11 @@ public class ActivityInstanceController {
         this.activityService = activityService;
     }
 
+    @Autowired
+    public void setToastsService(ToastsService toastsService) {
+        this.toastsService = toastsService;
+    }
+
     @PostMapping("/get_workflow_instance_activity")
     public List<ActivityInstanceResponse> getAllActivitiesInstanceWorkflowInstance(@RequestBody WorkflowInstance workflowInstance) {
         WorkflowInstance workflowInstance1 = workflowInstanceService.getWorkflowInstanceById(workflowInstance.getId());
@@ -67,6 +73,8 @@ public class ActivityInstanceController {
                     "Activity Instances not found");
             return null;
         }
+        boolean flag = false;
+        int count = 0;
 
         List<ActivityInstanceResponse> activityInstanceResponses = new ArrayList<>();
         for (ActivityInstance activityInstance : activityInstances) {
@@ -125,7 +133,16 @@ public class ActivityInstanceController {
                 activityInstanceResponse.setAssociates(activityAssociatesResponses);
             }
             activityInstanceResponses.add(activityInstanceResponse);
+            if(activityInstanceResponse.getStatus().equals("REJECT")){
+                flag = true;
+            }else if(activityInstanceResponse.getStatus().equals("ACCEPT")){
+                count++;
+            }
         }
+        if(flag || count==activityInstanceResponses.size()){
+            toastsService.dismissNotificationByActivityInstances(activityInstances);
+        }
+
         return activityInstanceResponses;
     }
 
@@ -185,6 +202,7 @@ public class ActivityInstanceController {
             }
             activityInstanceResponses.add(activityInstanceResponse);
         }
+
         return activityInstanceResponses;
     }
 

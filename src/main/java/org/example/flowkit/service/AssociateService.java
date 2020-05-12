@@ -1,7 +1,6 @@
 package org.example.flowkit.service;
 
 import org.example.flowkit.entity.*;
-import org.example.flowkit.repository.ActivityRepository;
 import org.example.flowkit.repository.AssociateRepository;
 import org.example.flowkit.service.implementation.AssociateServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +17,6 @@ import java.util.Optional;
 public class AssociateService implements AssociateServiceImpl {
 
     private AssociateRepository associateRepository;
-    private ActivityRepository activityRepository;
 
     public AssociateService() {
     }
@@ -56,11 +54,6 @@ public class AssociateService implements AssociateServiceImpl {
         this.associateRepository = associateRepository;
     }
 
-    @Autowired
-    public void setActivityRepository(ActivityRepository activityRepository) {
-        this.activityRepository = activityRepository;
-    }
-
     public Associates getAssociateByEmailID(String emailId) {
         return associateRepository.findByEmailId(emailId);
     }
@@ -86,7 +79,6 @@ public class AssociateService implements AssociateServiceImpl {
         if (manager != null) {
             employee.setManager(manager);
         }
-        System.out.println(manager);
         employee.setRole(role);
         try {
             associateRepository.save(employee);
@@ -146,7 +138,7 @@ public class AssociateService implements AssociateServiceImpl {
         return associateRepository.findAssociateForIndividual(individual);
     }
 
-    public List<Associates> findAssociateBasedRole(Roles role){
+    public List<Associates> findAssociateBasedRole(Roles role) {
         return associateRepository.findAssociateForRole(role);
     }
 
@@ -163,8 +155,8 @@ public class AssociateService implements AssociateServiceImpl {
         }
     }
 
-    public Associates findAssociateBasedIndividualVertical(Associates associates, String vertical){
-        if(vertical.equals("Manager")){
+    public Associates findAssociateBasedIndividualVertical(Associates associates, String vertical) {
+        if (vertical.equals("Manager")) {
             return associateRepository.findAssociateManager(associates);
         }
         return null;

@@ -38,9 +38,9 @@ public class AssociateController {
         }
         Roles roles = rolesService.getRoleById(associates.getRole().getId());
         Associates manager = null;
-        if(associates.getManager() != null){
+        if (associates.getManager() != null) {
             manager = associateService.getAssociateByEmailID(associates.getManager().getEmailId());
-            if(manager == null){
+            if (manager == null) {
                 return "Manager:";
             }
         }
@@ -71,7 +71,7 @@ public class AssociateController {
 
     @PostMapping("/verify_email")
     public String verifyEmail(@RequestBody Associates associates) {
-        if(associateService.getAssociateByEmailID(associates.getEmailId()) == null){
+        if (associateService.getAssociateByEmailID(associates.getEmailId()) == null) {
             return "Error:";
         }
         return "Success:";
@@ -81,14 +81,14 @@ public class AssociateController {
     public AssociateRequest getAssociateManager(@RequestBody Associates associates) {
         AssociateRequest associateRequest = new AssociateRequest();
         Associates associates1 = associateService.getAssociateById(associates.getId());
-        if(associates1==null){
+        if (associates1 == null) {
             return null;
         }
         Associates manager = associateService.findAssociateManager(associates1);
-        if(manager==null){
+        if (manager == null) {
             return null;
         }
-        associateRequest.setName(manager.getFirstName()+" "+manager.getLastName());
+        associateRequest.setName(manager.getFirstName() + " " + manager.getLastName());
         associateRequest.setEmail(manager.getEmailId());
         associateRequest.setId(manager.getId());
         return associateRequest;

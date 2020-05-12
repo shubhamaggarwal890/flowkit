@@ -3,6 +3,7 @@ package org.example.flowkit.service;
 import org.example.flowkit.entity.Associates;
 import org.example.flowkit.entity.Individual;
 import org.example.flowkit.repository.IndividualRepository;
+import org.example.flowkit.service.implementation.IndividualServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class IndividualService {
+public class IndividualService implements IndividualServiceImpl {
     private IndividualRepository individualRepository;
 
     @Autowired
