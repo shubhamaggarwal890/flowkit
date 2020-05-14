@@ -61,10 +61,12 @@ public class ToastsService implements ToastsServiceImpl {
 
     public void dismissNotificationByActivityInstance(ActivityInstance activityInstance) {
         List<ActivityAssociates> activityAssociates = activityAssociateService.getActivityAssociatesByActivityInstance(activityInstance);
-        for (ActivityAssociates act_associates: activityAssociates){
+        for (ActivityAssociates act_associates : activityAssociates) {
             Associates associates = associateService.findAssociateByActivityAssociate(act_associates);
             Toasts toast = toastsRepository.getNotificationByActivityInstanceAndNotifier(activityInstance, associates);
-            if(toast == null){return;}
+            if (toast == null) {
+                return;
+            }
             toast.setNotified(true);
             try {
                 toastsRepository.save(toast);
@@ -75,10 +77,26 @@ public class ToastsService implements ToastsServiceImpl {
         }
     }
 
+    public void dismissNotificationByActivityInstanceAndAssociate(ActivityInstance activityInstance,
+                                                                  Associates associate) {
+        Toasts toast = toastsRepository.getNotificationByActivityInstanceAndNotifier(activityInstance, associate);
+        if (toast == null) {
+            return;
+        }
+        toast.setNotified(true);
+        try {
+            toastsRepository.save(toast);
+        } catch (DataAccessException error) {
+            System.out.println("Error: [dismissNotificationByActivityInstance][NotificationService] " +
+                    error.getLocalizedMessage());
+        }
+    }
+
+
     public void dismissNotificationByActivityInstances(List<ActivityInstance> activityInstances) {
-        for (ActivityInstance activityInstance: activityInstances){
+        for (ActivityInstance activityInstance : activityInstances) {
             List<Toasts> toasts = toastsRepository.getNotificationByActivityInstance(activityInstance);
-            for (Toasts toast: toasts){
+            for (Toasts toast : toasts) {
                 toast.setNotified(true);
                 try {
                     toastsRepository.save(toast);
@@ -105,10 +123,10 @@ public class ToastsService implements ToastsServiceImpl {
     }
 
     public void setToastsForAssociate(ActivityInstance current, ActivityInstance next) {
-        if(current!=null) {
+        if (current != null) {
             dismissNotificationByActivityInstance(current);
         }
-        if(next.getDestination()==null){
+        if (next == null || next.getDestination() == null) {
             return;
         }
         WorkflowInstance workflowInstance = workflowInstanceService.getWorkflowInstanceByActivityInstance(next);
@@ -124,6 +142,44 @@ public class ToastsService implements ToastsServiceImpl {
             return;
         }
         List<ActivityAssociates> activityAssociates = activityAssociateService.getActivityAssociatesByActivityInstance(
+                next);
+        String message = "Hey, You have a pending request from " + customer.getFirstName() + " " + customer.getLastName();
+        Toasts toast = null;
+        for (ActivityAssociates act_as : activityAssociates) {
+            Associates notify = associateService.findAssociateByActivityAssociate(act_as);
+            if (notify == null) {
+                System.out.println("Error: [setToastsForAssociate][NotificationService] could not find notifier " +
+                        "for next activity instance");
+                return;
+            }
+            toast = addNotificationForAssociate(message, notify, next);
+        }
+    }
+
+    public void setToastsForAllRoleAssociate(ActivityInstance current, ActivityInstance next) {
+        if (current != null) {
+            dismissNotificationByActivityInstance(current);
+        }
+        if (next == null || next.getDestination() == null) {
+            return;
+        }
+        List<Toasts> toasts = toastsRepository.getNotificationByActivityInstance(next);
+        if (!toasts.isEmpty()) {
+            return;
+        }
+        WorkflowInstance workflowInstance = workflowInstanceService.getWorkflowInstanceByActivityInstance(next);
+        if (workflowInstance == null) {
+            System.out.println("Error: [setToastsForAssociate][NotificationService] could not find workflow instance " +
+                    "for next activity instance");
+            return;
+        }
+        Associates customer = associateService.findAssociateByWorkflowInstance(workflowInstance);
+        if (customer == null) {
+            System.out.println("Error: [setToastsForAssociate][NotificationService] could not find customer associate " +
+                    "for next activity instance");
+            return;
+        }
+        List<ActivityAssociates> activityAssociates = activityAssociateService.getActivityAssociatesPendingByActivityInstance(
                 next);
         String message = "Hey, You have a pending request from " + customer.getFirstName() + " " + customer.getLastName();
         Toasts toast = null;
