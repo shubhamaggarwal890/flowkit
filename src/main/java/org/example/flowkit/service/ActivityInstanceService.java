@@ -176,18 +176,15 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
                 for (ActivityAssociates activityAssociate : activityAssociates) {
                     Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
                     if (associates.getId().equals(associate.getId())) {
+                        activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
                         String message = "Hey, Your " + workflowInstance.getTitle() + " is rejected by " +
                                 associate.getFirstName() + " " + associate.getLastName();
                         toastService.addNotificationForAssociate(message, customer, activityInstance);
-                        activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
+
                     } else {
                         activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, null);
                     }
                 }
-//                ActivityInstance next = activityInstance.getDestination();
-//                if (next != null) {
-//                    toastService.setToastsForAssociate(activityInstance, next);
-//                }
                 return setActivityInstanceStatus(activityInstance, status);
             }
             int count = 0;
@@ -195,10 +192,10 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
                 Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
                 if (associates.getId().equals(associate.getId())) {
                     count += 1;
-                    String message = "Hey, " + associate.getFirstName() + " " + associate.getLastName()
-                            + "has approved your " + activityInstance.getTitle() + " in " + workflowInstance.getTitle();
-                    toastService.addNotificationForAssociate(message, customer, activityInstance);
                     activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
+                    String message = "Hey, " + associate.getFirstName() + " " + associate.getLastName()
+                            + " has approved your " + activityInstance.getTitle() + " in " + workflowInstance.getTitle();
+                    toastService.addNotificationForAssociate(message, customer, activityInstance);
                 } else if (activityAssociate.getStatus().equals("ACCEPT")) {
                     count += 1;
                 }
@@ -207,31 +204,25 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
                 String message = "Hey, Your " + activityInstance.getTitle() + " in " + workflowInstance.getTitle()
                         + " is approved by all the associates";
                 toastService.addNotificationForAssociate(message, customer, activityInstance);
-
-//                ActivityInstance next = activityInstance.getDestination();
-//                if (next != null) {
-//                    toastService.setToastsForAssociate(activityInstance, next);
-//                }
                 return setActivityInstanceStatus(activityInstance, status);
+            }else{
+                toastService.dismissNotificationByActivityInstanceAndAssociate(activityInstance, associate);
             }
             return activityInstance;
         } else {
             for (ActivityAssociates activityAssociate : activityAssociates) {
                 Associates associates = associateService.findAssociateByActivityAssociate(activityAssociate);
                 if (associates.getId().equals(associate.getId())) {
+                    activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
                     String message = "Hey, Your " + activityInstance.getTitle() + " in " + workflowInstance.getTitle()
                             + " is " + status.toLowerCase() + "ed by " + associate.getFirstName() + " " +
                             associate.getLastName();
                     toastService.addNotificationForAssociate(message, customer, activityInstance);
-                    activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, remark);
+
                 } else {
                     activityAssociateService.updateStatusRemarkActivityAssociate(activityAssociate, status, null);
                 }
             }
-//            ActivityInstance next = activityInstance.getDestination();
-//            if (next != null) {
-//                toastService.setToastsForAssociate(activityInstance, next);
-//            }
             return setActivityInstanceStatus(activityInstance, status);
         }
     }
@@ -262,16 +253,30 @@ public class ActivityInstanceService implements ActivityInstanceServiceImpl {
             if (activity == null) {
                 System.out.println("Error: [updateActivityInstances][ActivityInstanceService] activity not found");
                 return null;
-            } else if (activity.isAuto() && start.getStatus().equals("PENDING")) {
-                ActivityInstance output = setActivityInstanceStatus(start, "ACCEPT");
-                toastService.setToastsForAssociate(previous, start);
-                if (output == null) {
+            }
+            if (activity.isAuto() && start.getStatus().equals("PENDING") &&
+                    (previous == null || previous.getStatus().equals("ACCEPT"))) {
+                start = setActivityInstanceStatus(start, "ACCEPT");
+                toastService.setToastsForAssociate(previous,  null);
+                if (start == null) {
                     System.out.println("Error: [updateActivityInstances][ActivityInstanceService] failed to update " +
                             "activity instance for auto");
                     return null;
+                }else{
+                    start.setStatus("ACCEPT");
                 }
-            } else if (start.getStatus().equals("PENDING")) {
+            } else if (activity.isAll_any_role() && start.getStatus().equals("PENDING") &&
+                    (previous == null || previous.getStatus().equals("ACCEPT"))) {
+                toastService.setToastsForAllRoleAssociate(previous, start);
+                return start;
+            } else if (start.getStatus().equals("PENDING") &&
+                    (previous == null || previous.getStatus().equals("ACCEPT"))) {
+                System.out.println("When current is pending and previous is null and has status accept");
                 toastService.setToastsForAssociate(previous, start);
+                return start;
+            } else if (start.getStatus().equals("PENDING") && (previous == null ||
+                    previous.getStatus().equals("REJECT"))) {
+                toastService.setToastsForAssociate(previous, null);
                 return start;
             }
             previous = start;

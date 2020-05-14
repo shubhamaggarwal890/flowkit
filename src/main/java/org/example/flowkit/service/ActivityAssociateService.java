@@ -116,6 +116,11 @@ public class ActivityAssociateService implements ActivityAssociateServiceImpl {
         return activityAssociateRepository.getActivityAssociatesByActivityInstance(activityInstance);
     }
 
+    public List<ActivityAssociates> getActivityAssociatesPendingByActivityInstance(ActivityInstance activityInstance) {
+        return activityAssociateRepository.getActivityAssociatesPendingByActivityInstance(activityInstance);
+    }
+
+
     public ActivityAssociates updateStatusRemarkActivityAssociate(ActivityAssociates activityAssociates, String status,
                                                                   String remark) {
         if(remark == null){
